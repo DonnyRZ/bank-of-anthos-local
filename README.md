@@ -66,9 +66,9 @@ This version of Bank of Anthos has been modified to run locally without Google C
    cd src/loadgenerator && docker build -t loadgenerator:local . && cd ../..
    
    # Build Java services
-   cd src/ledger/balancereader && mvn compile jib:dockerBuild -Djib.to.image=balancereader:local && cd ../../..
-   cd src/ledger/ledgerwriter && mvn compile jib:dockerBuild -Djib.to.image=ledgerwriter:local && cd ../../..
-   cd src/ledger/transactionhistory && mvn compile jib:dockerBuild -Djib.to.image=transactionhistory:local && cd ../../..
+   cd src/ledger/balancereader && mvn package jib:dockerBuild -Djib.to.image=balancereader:local && cd ../../..
+   cd src/ledger/ledgerwriter && mvn package jib:dockerBuild -Djib.to.image=ledgerwriter:local && cd ../../..
+   cd src/ledger/transactionhistory && mvn package jib:dockerBuild -Djib.to.image=transactionhistory:local && cd ../../..
    ```
 
 3. Apply the Kubernetes manifests:
