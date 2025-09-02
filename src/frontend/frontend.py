@@ -23,6 +23,7 @@ import logging
 import os
 import socket
 from decimal import Decimal, DecimalException
+from functools import wraps
 from time import sleep
 
 import requests
@@ -49,6 +50,40 @@ from traced_thread_pool_executor import TracedThreadPoolExecutor
 BALANCE_NAME = "balance"
 CONTACTS_NAME = "contacts"
 TRANSACTION_LIST_NAME = "transaction_list"
+
+def admin_required(f):
+    """Decorator to ensure a user is an admin"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        token = request.cookies.get(app.config['TOKEN_NAME'])
+        if not token:
+            return redirect(url_for('login_page', msg='Login required'))
+
+        try:
+            # Verify token signature and expiration
+            jwt.decode(
+                algorithms=['RS256'],
+                jwt=token,
+                key=app.config['PUBLIC_KEY'],
+                options={"verify_signature": True})
+            # Decode without signature verification to read claims
+            decoded_token = jwt.decode(token, options={"verify_signature": False})
+
+            if decoded_token.get('role') != 'admin':
+                app.logger.warning('User %s attempted to access admin page without admin role.', decoded_token.get('user'))
+                return "Forbidden: Admin access required.", 403
+            # Call the original view function
+            return f(*args, **kwargs)
+
+        except jwt.ExpiredSignatureError:
+            app.logger.debug('Admin token expired. Redirecting to login.')
+            return redirect(url_for('login_page', msg='Token expired. Please log in again.'))
+        except jwt.InvalidTokenError as err:
+            app.logger.error('Invalid admin token: %s', str(err))
+            return redirect(url_for('login_page', msg='Invalid token. Please log in again.'))
+
+    return decorated_function
+
 
 # pylint: disable-msg=too-many-locals
 # pylint: disable-msg=too-many-branches
@@ -199,6 +234,53 @@ def create_app():
                 trans['accountLabel'] = contact_map.get(trans['fromAccountNum'])
             elif trans['fromAccountNum'] == account_id:
                 trans['accountLabel'] = contact_map.get(trans['toAccountNum'])
+
+    @app.route('/admin')
+    @admin_required
+    def admin_dashboard():
+        """Renders the admin dashboard page."""
+        token = request.cookies.get(app.config['TOKEN_NAME'])
+        auth_header = {'Authorization': f'Bearer {token}'}
+
+        users = []
+        stats = {
+            'total_users': 0,
+            'total_accounts': 'N/A',
+            'total_transactions': 'N/A'
+        }
+
+        try:
+            # 1. Get all users from userservice
+            users_service_url = f"http://{os.environ.get('USERSERVICE_API_ADDR')}/users/all"
+            users_resp = requests.get(users_service_url, headers=auth_header, timeout=app.config['BACKEND_TIMEOUT'])
+            users_resp.raise_for_status()
+            users = users_resp.json()
+            stats['total_users'] = len(users)
+
+            # 2. Get total accounts from balancereader (assumption: /balances returns all)
+            balance_service_url = f"http://{os.environ.get('BALANCES_API_ADDR')}/balances"
+            balance_resp = requests.get(balance_service_url, headers=auth_header, timeout=app.config['BACKEND_TIMEOUT'])
+            if balance_resp.ok:
+                stats['total_accounts'] = len(balance_resp.json())
+
+            # 3. Get total transactions from transactionhistory (assumption: /transactions returns all)
+            history_service_url = f"http://{os.environ.get('HISTORY_API_ADDR')}/transactions"
+            history_resp = requests.get(history_service_url, headers=auth_header, timeout=app.config['BACKEND_TIMEOUT'])
+            if history_resp.ok:
+                stats['total_transactions'] = len(history_resp.json())
+
+        except (RequestException, HTTPError) as err:
+            app.logger.error("Error fetching admin data: %s", str(err))
+            # Allow page to render with partial data or error message
+            pass
+
+        return render_template('admin.html',
+                               users=users,
+                               stats=stats,
+                               bank_name=os.getenv('BANK_NAME', 'Bank of Anthos'),
+                               cluster_name=cluster_name,
+                               pod_name=pod_name,
+                               pod_zone=pod_zone)
 
     @app.route('/payment', methods=['POST'])
     def payment():

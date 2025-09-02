@@ -44,6 +44,7 @@ class UserDb:
             Column('state', String, nullable=False),
             Column('zip', String, nullable=False),
             Column('ssn', String, nullable=False),
+            Column('role', String, nullable=False, server_default='customer'),
         )
 
         # Set up tracing autoinstrumentation for sqlalchemy
@@ -99,3 +100,16 @@ class UserDb:
             result = conn.execute(statement).first()
         self.logger.debug('RESULT: fetched user data for %s', username)
         return dict(result) if result is not None else None
+
+    def get_all_users(self):
+        """Get all users from the database.
+
+        Return: a list of key/value dicts of user attributes
+        Raises: SQLAlchemyError if there was an issue with the database
+        """
+        statement = self.users_table.select()
+        self.logger.debug('QUERY: %s', str(statement))
+        with self.engine.connect() as conn:
+            result = conn.execute(statement).fetchall()
+        self.logger.debug('RESULT: fetched all user data')
+        return [dict(row) for row in result]

@@ -131,6 +131,23 @@ def create_app():
 
         return jsonify({}), 201
 
+    @app.route('/users/all', methods=['GET'])
+    def get_all_users():
+        """Get all user records.
+        """
+        try:
+            app.logger.debug("Getting all users from the database")
+            users = users_db.get_all_users()
+            # Convert datetime and bytes to string for JSON serialization
+            for user in users:
+                for key, value in user.items():
+                    if isinstance(value, (datetime, bytes)):
+                        user[key] = str(value)
+            return jsonify(users), 200
+        except SQLAlchemyError as err:
+            app.logger.error("Error getting all users: %s", str(err))
+            return 'failed to get all users', 500
+
     def __validate_new_user(req):
         app.logger.debug('validating create user request: %s', str(req))
         # Check if required fields are filled
@@ -193,6 +210,7 @@ def create_app():
                 'user': username,
                 'acct': user['accountid'],
                 'name': full_name,
+                'role': user['role'],
                 'iat': datetime.utcnow(),
                 'exp': exp_time,
             }
