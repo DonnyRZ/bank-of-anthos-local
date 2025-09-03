@@ -113,3 +113,10 @@ class UserDb:
             result = conn.execute(statement).fetchall()
         self.logger.debug('RESULT: fetched all user data')
         return [dict(row) for row in result]
+
+    def update_user_role(self, username, role):
+        """Updates the role for a given user."""
+        statement = self.users_table.update().where(self.users_table.c.username == username).values(role=role)
+        self.logger.debug('QUERY: %s', str(statement))
+        with self.engine.connect() as conn:
+            conn.execute(statement)

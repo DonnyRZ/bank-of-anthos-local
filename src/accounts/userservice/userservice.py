@@ -264,6 +264,56 @@ def create_app():
     except OperationalError:
         app.logger.critical("users_db database connection failed")
         sys.exit(1)
+
+    # --- BEGIN ADMIN MIGRATION ---
+    def setup_admin_user():
+        app.logger.info("Checking for admin user setup...")
+        admin_user = os.environ.get('ADMIN_USERNAME')
+        admin_pass = os.environ.get('ADMIN_PASSWORD')
+
+        if not (admin_user and admin_pass):
+            app.logger.info("ADMIN_USERNAME and ADMIN_PASSWORD not set. Skipping admin setup.")
+            return
+
+        try:
+            user = users_db.get_user(admin_user)
+            if user:
+                if user.get('role') != 'admin':
+                    app.logger.info(f"User '{admin_user}' exists but is not an admin. Updating role.")
+                    users_db.update_user_role(admin_user, 'admin')
+                    app.logger.info(f"Role for user '{admin_user}' updated to 'admin'.")
+                else:
+                    app.logger.info(f"Admin user '{admin_user}' already exists with correct role.")
+            else:
+                app.logger.info(f"Admin user '{admin_user}' not found. Creating new admin user.")
+                salt = bcrypt.gensalt()
+                passhash = bcrypt.hashpw(admin_pass.encode('utf-8'), salt)
+                accountid = users_db.generate_accountid()
+
+                # Use dummy data for non-essential fields
+                user_data = {
+                    'accountid': accountid,
+                    'username': admin_user,
+                    'passhash': passhash,
+                    'firstname': 'Admin',
+                    'lastname': 'User',
+                    'birthday': '1970-01-01',
+                    'timezone': 'UTC',
+                    'address': '1600 Amphitheatre Parkway',
+                    'state': 'CA',
+                    'zip': '94043',
+                    'ssn': '000-00-0000',
+                    'role': 'admin'
+                }
+                users_db.add_user(user_data)
+                app.logger.info(f"Successfully created admin user '{admin_user}'.")
+        except SQLAlchemyError as err:
+            app.logger.error("Error during admin user setup: %s", str(err))
+
+    with app.app_context():
+        setup_admin_user()
+    # --- END ADMIN MIGRATION ---
+
     return app
 
 
