@@ -79,7 +79,7 @@ spec:
             - name: DISABLE_CLOUD_MONITORING
               value: "true"
             - name: SPRING_AUTOCONFIGURE_EXCLUDE
-              value: org.springframework.cloud.gcp.autoconfigure.trace.StackdriverTraceAutoConfiguration,org.springframework.cloud.gcp.autoconfigure.core.GcpContextAutoConfiguration,org.springframework.boot.actuate.autoconfigure.metrics.SystemMetricsAutoConfiguration
+              value: org.springframework.cloud.gcp.autoconfigure.trace.StackdriverTraceAutoConfiguration,org.springframework.cloud.gcp.autoconfigure.core.GcpContextAutoConfiguration,org.springframework.boot.actuate.autoconfigure.metrics.SystemMetricsAutoConfiguration,org.springframework.cloud.gcp.autoconfigure.pubsub.GcpPubSubAutoConfiguration
             - name: POLL_MS
               value: "100"
             - name: CACHE_SIZE

@@ -66,6 +66,20 @@
                 </tbody>
             </table>
         </div>
+
+        <nav aria-label="User pagination">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {% if pagination.page <= 1 %}disabled{% endif %}">
+                    <a class="page-link" href="/admin?page={{ pagination.page - 1 }}">Previous</a>
+                </li>
+                <li class="page-item active">
+                    <a class="page-link" href="#">{{ pagination.page }} <span class="sr-only">(current)</span></a>
+                </li>
+                <li class="page-item {% if pagination.page >= pagination.total_pages %}disabled{% endif %}">
+                    <a class="page-link" href="/admin?page={{ pagination.page + 1 }}">Next</a>
+                </li>
+            </ul>
+        </nav>
     </main>
 
     {% include 'shared/footer.html' %}

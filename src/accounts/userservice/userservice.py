@@ -133,17 +133,33 @@ def create_app():
 
     @app.route('/users/all', methods=['GET'])
     def get_all_users():
-        """Get all user records.
+        """Get all user records, with pagination.
+
+        Query parameters:
+        - page: the page number to retrieve (default: 1)
+        - per_page: the number of items per page (default: 10)
         """
         try:
-            app.logger.debug("Getting all users from the database")
-            users = users_db.get_all_users()
+            page = int(request.args.get('page', 1))
+            per_page = int(request.args.get('per_page', 10))
+            app.logger.debug(f"Getting users for page {page} with {per_page} items per page.")
+
+            users = users_db.get_users_paginated(page, per_page)
+            total_users = users_db.count_users()
+
             # Convert datetime and bytes to string for JSON serialization
             for user in users:
                 for key, value in user.items():
                     if isinstance(value, (datetime, bytes)):
                         user[key] = str(value)
-            return jsonify(users), 200
+
+            return jsonify({
+                'users': users,
+                'total_users': total_users,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': (total_users + per_page - 1) // per_page
+            }), 200
         except SQLAlchemyError as err:
             app.logger.error("Error getting all users: %s", str(err))
             return 'failed to get all users', 500

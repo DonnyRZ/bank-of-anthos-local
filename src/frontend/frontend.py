@@ -245,7 +245,10 @@ def create_app():
         token = request.cookies.get(app.config['TOKEN_NAME'])
         auth_header = {'Authorization': f'Bearer {token}'}
 
-        users = []
+        page = int(request.args.get('page', 1))
+        per_page = 10
+
+        users_data = {'page': 1, 'total_pages': 1, 'total_users': 0, 'users': []}
         stats = {
             'total_users': 0,
             'total_accounts': 'N/A',
@@ -253,12 +256,13 @@ def create_app():
         }
 
         try:
-            # 1. Get all users from userservice
-            users_service_url = f"http://{os.environ.get('USERSERVICE_API_ADDR')}/users/all"
+            # 1. Get users from userservice
+            users_service_url = f"http://{os.environ.get('USERSERVICE_API_ADDR')}/users/all?page={page}&per_page={per_page}"
             users_resp = requests.get(users_service_url, headers=auth_header, timeout=app.config['BACKEND_TIMEOUT'])
             users_resp.raise_for_status()
-            users = users_resp.json()
-            stats['total_users'] = len(users)
+            users_data = users_resp.json()
+            app.logger.info(f"Pagination data: {users_data}")
+            stats['total_users'] = users_data.get('total_users', 0)
 
             # 2. Get total accounts from balancereader (assumption: /balances returns all)
             balance_service_url = f"http://{os.environ.get('BALANCES_API_ADDR')}/balances"
@@ -278,7 +282,8 @@ def create_app():
             pass
 
         return render_template('admin.html',
-                               users=users,
+                               users=users_data.get('users', []),
+                               pagination=users_data,
                                stats=stats,
                                bank_name=os.getenv('BANK_NAME', 'Bank of Anthos'),
                                cluster_name=cluster_name,

@@ -26,7 +26,11 @@ eval $(minikube docker-env)
 echo "✅ Docker environment set for Minikube."
 
 echo "🔵 2. Rebuilding '$SERVICE_NAME:local' image..."
-docker build --no-cache -t "${SERVICE_NAME}:local" "src/${SERVICE_NAME}"
+if [ "$SERVICE_NAME" == "balancereader" ] || [ "$SERVICE_NAME" == "transactionhistory" ]; then
+    cd "src/ledger/${SERVICE_NAME}" && docker build --no-cache -t "${SERVICE_NAME}:local" . && cd ../../..
+else
+    cd "src/${SERVICE_NAME}" && docker build --no-cache -t "${SERVICE_NAME}:local" . && cd ../..
+fi
 echo "✅ Image rebuilt successfully."
 
 echo "🔵 3. Restarting '$SERVICE_NAME' deployment..."

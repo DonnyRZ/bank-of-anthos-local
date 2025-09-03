@@ -18,7 +18,7 @@ db manages interactions with the underlying database
 
 import logging
 import random
-from sqlalchemy import create_engine, MetaData, Table, Column, String, Date, LargeBinary
+from sqlalchemy import create_engine, MetaData, Table, Column, String, Date, LargeBinary, func
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 
 class UserDb:
@@ -113,6 +113,23 @@ class UserDb:
             result = conn.execute(statement).fetchall()
         self.logger.debug('RESULT: fetched all user data')
         return [dict(row) for row in result]
+
+    def get_users_paginated(self, page, per_page):
+        """Get a paginated list of users from the database."""
+        offset = (page - 1) * per_page
+        statement = self.users_table.select().limit(per_page).offset(offset)
+        self.logger.debug('QUERY: %s', str(statement))
+        with self.engine.connect() as conn:
+            result = conn.execute(statement).fetchall()
+        return [dict(row) for row in result]
+
+    def count_users(self):
+        """Count the total number of users in the database."""
+        statement = self.users_table.select().with_only_columns(func.count())
+        self.logger.debug('QUERY: %s', str(statement))
+        with self.engine.connect() as conn:
+            result = conn.execute(statement).scalar()
+        return result
 
     def update_user_role(self, username, role):
         """Updates the role for a given user."""
