@@ -24,6 +24,10 @@
                   </span>
                 </a>
                 <div class="dropdown-menu" aria-labelledby="accountDropdown">
+                  {% if is_admin %}
+                  <a class="dropdown-item" href="/admin">Admin Dashboard</a>
+                  <div class="dropdown-divider"></div>
+                  {% endif %}
                   <form id="logout-form" method="POST" action="/logout">
                     <a class="dropdown-item" onclick="document.querySelector('#logout-form').submit();">Sign out<i class="fa-icon-spacer fas fa-sign-out-alt"></i></a>
                   </form>

@@ -115,7 +115,7 @@ def create_app():
                 'ssn': req['ssn'],
             }
             # Add user_data to database
-            app.logger.debug("Adding user to the database")
+            app.logger.debug("Adding user to the database with data: %s", user_data)
             users_db.add_user(user_data)
             app.logger.info("Successfully created user.")
 
@@ -276,14 +276,13 @@ def create_app():
             return
 
         try:
+            # Try to update the user's role to admin.
+            # If the user doesn't exist, this will do nothing.
+            users_db.update_user_role(admin_user, 'admin')
+
             user = users_db.get_user(admin_user)
             if user:
-                if user.get('role') != 'admin':
-                    app.logger.info(f"User '{admin_user}' exists but is not an admin. Updating role.")
-                    users_db.update_user_role(admin_user, 'admin')
-                    app.logger.info(f"Role for user '{admin_user}' updated to 'admin'.")
-                else:
-                    app.logger.info(f"Admin user '{admin_user}' already exists with correct role.")
+                app.logger.info(f"Admin user '{admin_user}' already exists with correct role.")
             else:
                 app.logger.info(f"Admin user '{admin_user}' not found. Creating new admin user.")
                 salt = bcrypt.gensalt()

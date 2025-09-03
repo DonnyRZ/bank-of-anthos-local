@@ -30,7 +30,7 @@ import requests
 from requests.exceptions import HTTPError, RequestException
 import jwt
 from flask import Flask, abort, jsonify, make_response, redirect, \
-    render_template, request, url_for
+    render_template, request, url_for, current_app
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -55,7 +55,7 @@ def admin_required(f):
     """Decorator to ensure a user is an admin"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        token = request.cookies.get(app.config['TOKEN_NAME'])
+        token = request.cookies.get(current_app.config['TOKEN_NAME'])
         if not token:
             return redirect(url_for('login_page', msg='Login required'))
 
@@ -64,22 +64,22 @@ def admin_required(f):
             jwt.decode(
                 algorithms=['RS256'],
                 jwt=token,
-                key=app.config['PUBLIC_KEY'],
+                key=current_app.config['PUBLIC_KEY'],
                 options={"verify_signature": True})
             # Decode without signature verification to read claims
             decoded_token = jwt.decode(token, options={"verify_signature": False})
 
             if decoded_token.get('role') != 'admin':
-                app.logger.warning('User %s attempted to access admin page without admin role.', decoded_token.get('user'))
+                current_app.logger.warning('User %s attempted to access admin page without admin role.', decoded_token.get('user'))
                 return "Forbidden: Admin access required.", 403
             # Call the original view function
             return f(*args, **kwargs)
 
         except jwt.ExpiredSignatureError:
-            app.logger.debug('Admin token expired. Redirecting to login.')
+            current_app.logger.debug('Admin token expired. Redirecting to login.')
             return redirect(url_for('login_page', msg='Token expired. Please log in again.'))
         except jwt.InvalidTokenError as err:
-            app.logger.error('Invalid admin token: %s', str(err))
+            current_app.logger.error('Invalid admin token: %s', str(err))
             return redirect(url_for('login_page', msg='Invalid token. Please log in again.'))
 
     return decorated_function
@@ -144,6 +144,7 @@ def create_app():
         display_name = token_data['name']
         username = token_data['user']
         account_id = token_data['acct']
+        is_admin = token_data.get('role') == 'admin'
 
         hed = {'Authorization': 'Bearer ' + token}
 
@@ -198,12 +199,14 @@ def create_app():
                                contacts=api_response[CONTACTS_NAME],
                                cymbal_logo=os.getenv('CYMBAL_LOGO', 'false'),
                                history=api_response[TRANSACTION_LIST_NAME],
+                               is_admin=is_admin,
                                message=request.args.get('msg', None),
                                name=display_name,
                                platform=platform,
                                platform_display_name=platform_display_name,
                                pod_name=pod_name,
                                pod_zone=pod_zone)
+
 
     def _populate_contact_labels(account_id, transactions, contacts):
         """
@@ -542,6 +545,10 @@ def create_app():
                                                       state=request_args['state'],
                                                       redirect_uri=request_args['redirect_uri'],
                                                       app_name=request_args['app_name'],
+                                                      _external=True,
+                                                      _scheme=app.config['SCHEME'])))
+            elif claims.get('role') == 'admin':
+                resp = make_response(redirect(url_for('admin_dashboard',
                                                       _external=True,
                                                       _scheme=app.config['SCHEME'])))
             else:
