@@ -56,7 +56,7 @@
                         <td>{{ user.username }}</td>
                         <td>{{ user.firstname }}</td>
                         <td>{{ user.lastname }}</td>
-                        <td><span class="badge {% if user.role == 'admin' %}badge-danger{% else %}badge-secondary{% endif %}">{{ user.role }}</span></td>
+                        <td><span class="badge {% if user.role == 'admin' %}badge-warning{% else %}badge-secondary{% endif %}">{{ user.role }}</span></td>
                     </tr>
                     {% else %}
                     <tr>
@@ -70,13 +70,13 @@
         <nav aria-label="User pagination">
             <ul class="pagination justify-content-center">
                 <li class="page-item {% if pagination.page <= 1 %}disabled{% endif %}">
-                    <a class="page-link" href="/admin?page={{ pagination.page - 1 }}">Previous</a>
+                    <a class="page-link" href="/admin?page={{ pagination.page - 1 }}" {% if pagination.page <= 1 %}disabled{% endif %}>Previous</a>
                 </li>
                 <li class="page-item active">
                     <a class="page-link" href="#">{{ pagination.page }} <span class="sr-only">(current)</span></a>
                 </li>
                 <li class="page-item {% if pagination.page >= pagination.total_pages %}disabled{% endif %}">
-                    <a class="page-link" href="/admin?page={{ pagination.page + 1 }}">Next</a>
+                    <a class="page-link" href="/admin?page={{ pagination.page + 1 }}" {% if pagination.page >= pagination.total_pages %}disabled{% endif %}>Next</a>
                 </li>
             </ul>
         </nav>
